@@ -16,6 +16,8 @@
 #include <asm/mmu_context.h>
 #include <asm/smp.h>
 #include <asm/tlbflush.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 static u32 asid_bits;
 static DEFINE_RAW_SPINLOCK(cpu_asid_lock);
@@ -30,6 +32,8 @@ static cpumask_t tlb_flush_pending;
 static unsigned long max_pinned_asids;
 static unsigned long nr_pinned_asids;
 static unsigned long *pinned_asid_map;
+
+
 
 #define ASID_MASK		(~GENMASK(asid_bits - 1, 0))
 #define ASID_FIRST_VERSION	(1UL << 16)
@@ -276,12 +280,17 @@ switch_mm_fastpath:
 	 */
 	active = READ_ONCE(mm->context.active_cpu);
 	if (active != cpu && active != ACTIVE_CPU_MULTIPLE) {
-		if (active == ACTIVE_CPU_NONE)
+		if (active == ACTIVE_CPU_NONE) {
 			active = cmpxchg_relaxed(&mm->context.active_cpu,
-						 ACTIVE_CPU_NONE, cpu);
+				ACTIVE_CPU_NONE, cpu);
+			if (active == ACTIVE_CPU_NONE)
+				this_cpu_inc(tlbi_active_none_to_cpu);
+		}
 
-		if (active != ACTIVE_CPU_NONE)
+		if (active != ACTIVE_CPU_NONE) {
 			WRITE_ONCE(mm->context.active_cpu, ACTIVE_CPU_MULTIPLE);
+			this_cpu_inc(tlbi_active_cpu_to_multiple);
+		}
 
 		dsb(ishst);
 	}
@@ -444,3 +453,68 @@ static int asids_init(void)
 	return 0;
 }
 early_initcall(asids_init);
+
+DEFINE_PER_CPU(u64, tlbi_local_count);
+DEFINE_PER_CPU(u64, tlbi_broadcast_count);
+
+DEFINE_PER_CPU(u64, tlbi_local_mm);
+DEFINE_PER_CPU(u64, tlbi_broadcast_mm);
+
+DEFINE_PER_CPU(u64, tlbi_local_range);
+DEFINE_PER_CPU(u64, tlbi_broadcast_range);
+
+DEFINE_PER_CPU(u64, tlbi_active_none_to_cpu);
+DEFINE_PER_CPU(u64, tlbi_active_cpu_to_multiple);
+
+
+static int tlbi_stats_show(struct seq_file *m, void *v)
+{
+	u64 local = 0, broadcast = 0;
+	u64 local_mm = 0, local_range = 0;
+	u64 broadcast_mm = 0, broadcast_range = 0;
+	u64 none_to_cpu = 0, cpu_to_multiple = 0;
+	int cpu;
+
+	for_each_online_cpu(cpu) {
+		local += per_cpu(tlbi_local_count, cpu);
+		broadcast += per_cpu(tlbi_broadcast_count, cpu);
+		local_mm += per_cpu(tlbi_local_mm, cpu);
+		broadcast_mm += per_cpu(tlbi_broadcast_mm, cpu);
+		local_range += per_cpu(tlbi_local_range, cpu);
+		broadcast_range += per_cpu(tlbi_broadcast_range, cpu);
+		none_to_cpu += per_cpu(tlbi_active_none_to_cpu, cpu);
+		cpu_to_multiple += per_cpu(tlbi_active_cpu_to_multiple, cpu);
+	}
+	seq_printf(m, "local:                 %llu\n", local);
+	seq_printf(m, "broadcast:             %llu\n", broadcast);
+	if (local+broadcast > 0)
+		seq_printf(m, "saved_pct:            %llu%%\n", 100ULL * local / (local + broadcast));
+	seq_printf(m, "local_mm:              %llu\n", local_mm);
+	seq_printf(m, "broadcast_mm:          %llu\n", broadcast_mm);
+	seq_printf(m, "local_range:           %llu\n", local_range);
+	seq_printf(m, "broadcast_range:       %llu\n", broadcast_range);
+	seq_printf(m, "none_to_cpu:           %llu\n", none_to_cpu);
+	seq_printf(m, "cpu_to_multiple:       %llu\n", cpu_to_multiple);
+
+	/* per-cpu breakdown */
+	seq_printf(m, "\n%-8s %-12s %-12s %-12s %-12s\n", "cpu", "local", "broadcast", "local_range", "bcast_range");
+
+	for_each_online_cpu(cpu) {
+		seq_printf(m, "%-8d %-12llu %-12llu %-12llu %-12llu\n",
+					cpu,
+					per_cpu(tlbi_local_count, cpu),
+					per_cpu(tlbi_broadcast_count, cpu),
+					per_cpu(tlbi_local_range, cpu),
+					per_cpu(tlbi_broadcast_range, cpu));
+	}
+
+	return 0;
+}
+
+static int __init tlbi_stats_init(void)
+{
+	proc_create_single("tlbi_stats", 0, NULL, tlbi_stats_show);
+	return 0;
+}
+
+late_initcall(tlbi_stats_init);

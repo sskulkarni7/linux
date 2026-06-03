@@ -17,6 +17,15 @@
 #include <asm/cputype.h>
 #include <asm/mmu.h>
 
+DECLARE_PER_CPU(u64, tlbi_local_count);
+DECLARE_PER_CPU(u64, tlbi_broadcast_count);
+DECLARE_PER_CPU(u64, tlbi_local_mm);
+DECLARE_PER_CPU(u64, tlbi_broadcast_mm);
+DECLARE_PER_CPU(u64, tlbi_local_range);
+DECLARE_PER_CPU(u64, tlbi_broadcast_range);
+DECLARE_PER_CPU(u64, tlbi_active_none_to_cpu);
+DECLARE_PER_CPU(u64, tlbi_active_cpu_to_multiple);
+
 /*
  * Raw TLBI operations.
  *
@@ -29,13 +38,13 @@
  * not. The macros handles invoking the asm with or without the
  * register argument as appropriate.
  */
-#define __TLBI_0(op, arg) asm (ARM64_ASM_PREAMBLE			       \
+{#define __TLBI_0(op, arg) asm (ARM64_ASM_PREAMBLE			       \
 			       "tlbi " #op "\n"				       \
-			    : : )
+			    : : )}
 
-#define __TLBI_1(op, arg) asm (ARM64_ASM_PREAMBLE			       \
+{#define __TLBI_1(op, arg) asm (ARM64_ASM_PREAMBLE			       \
 			       "tlbi " #op ", %x0\n"			       \
-			    : : "rZ" (arg))
+			    : : "rZ" (arg))}
 
 #define __TLBI_N(op, arg, n, ...) __TLBI_##n(op, arg)
 
@@ -370,6 +379,12 @@ static inline bool flush_tlb_user_pre(struct mm_struct *mm, tlbf_t flags)
 	}
 
 	local = active == self;
+
+	if (local)
+		this_cpu_inc(tlbi_local_count);
+	else
+		this_cpu_inc(tlbi_broadcast_count);
+
 	if (!local)
 		migrate_enable();
 
@@ -487,10 +502,12 @@ static inline void flush_tlb_mm(struct mm_struct *mm)
 	local = flush_tlb_user_pre(mm, TLBF_NONE);
 	asid = __TLBI_VADDR(0, ASID(mm));
 	if (local) {
+		this_cpu_inc(tlbi_local_mm);
 		__tlbi(aside1, asid);
 		__tlbi_user(aside1, asid);
 		dsb(nsh);
 	} else {
+		this_cpu_inc(tlbi_broadcast_mm);
 		__tlbi(aside1is, asid);
 		__tlbi_user(aside1is, asid);
 		__tlbi_sync_s1ish(mm);
@@ -678,6 +695,12 @@ static __always_inline void __do_flush_tlb_range(struct vm_area_struct *vma,
 	}
 
 	local = flush_tlb_user_pre(mm, flags);
+
+	if (local)
+		this_cpu_inc(tlbi_local_range);
+	else
+		this_cpu_inc(tlbi_broadcast_range);
+
 	if (local && !(flags & TLBF_NOBROADCAST))
 		flags |= TLBF_NOBROADCAST;
 
