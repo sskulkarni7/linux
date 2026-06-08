@@ -209,6 +209,7 @@ static u64 new_context(struct mm_struct *mm)
 set_asid:
 	__set_bit(asid, asid_map);
 	cur_idx = asid;
+	WRITE_ONCE(mm->context.active_cpu, ACTIVE_CPU_NONE);
 	return asid2ctxid(asid, generation);
 }
 
