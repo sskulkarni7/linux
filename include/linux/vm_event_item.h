@@ -117,10 +117,22 @@ enum vm_event_item { PGPGIN, PGPGOUT, PSWPIN, PSWPOUT,
 #endif /* CONFIG_BALLOON_MIGRATION */
 #endif /* CONFIG_BALLOON */
 #ifdef CONFIG_DEBUG_TLBFLUSH
+		/*
+		 * arm64 TLB flush accounting for the active_cpu optimization
+		 * local_* counters mean the local-only fast path was taken;
+		 * the broadcast counters mean a full broadcast was required.
+		 */
 		NR_TLB_REMOTE_FLUSH,	/* cpu tried to flush others' tlbs */
 		NR_TLB_REMOTE_FLUSH_RECEIVED,/* cpu received ipi for flush */
-		NR_TLB_LOCAL_FLUSH_ALL,
-		NR_TLB_LOCAL_FLUSH_ONE,
+		NR_TLB_LOCAL_FLUSH_ALL,     /* local whole-mm flush */
+		NR_TLB_LOCAL_FLUSH_RANGE,   /* local range flush; also counts single page
+					       flushes, which go through the range path */
+		NR_TLB_FLUSH_ALL,           /* broadcast whole-mm flush */
+		NR_TLB_FLUSH_RANGE,         /* broadcast range flush; also single page */
+		NR_TLB_BROADCAST_MULTIPLE,  /* broadcasts that happened because the mm was
+					       active on multiple CPUs (active_cpu == MULTIPLE);
+					       does not count broadcasts where the mm is owned
+					       by a different single CPU */
 #endif /* CONFIG_DEBUG_TLBFLUSH */
 #ifdef CONFIG_SWAP
 		SWAP_RA,

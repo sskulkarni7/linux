@@ -20,4 +20,11 @@ config ARM64_RELOC_TEST
 	depends on m
 	tristate "Relocation testing module"
 
+config DEBUG_TLBFLUSH
+	bool "Add vmstat counters to analyze TLB handling"
+	depends on DEBUG_KERNEL
+	help
+	 This option allows the user to see the TLB flushing behavior in
+	 /proc/vmstat.
+
 source "drivers/hwtracing/coresight/Kconfig"
