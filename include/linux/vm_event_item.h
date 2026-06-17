@@ -120,7 +120,12 @@ enum vm_event_item { PGPGIN, PGPGOUT, PSWPIN, PSWPOUT,
 		NR_TLB_REMOTE_FLUSH,	/* cpu tried to flush others' tlbs */
 		NR_TLB_REMOTE_FLUSH_RECEIVED,/* cpu received ipi for flush */
 		NR_TLB_LOCAL_FLUSH_ALL,
+		NR_TLB_LOCAL_FLUSH_RANGE,
 		NR_TLB_LOCAL_FLUSH_ONE,
+		NR_TLB_FLUSH_ALL,
+		NR_TLB_FLUSH_RANGE,
+		NR_TLB_FLUSH_ONE,
+		NR_TLB_SKIPPED,
 #endif /* CONFIG_DEBUG_TLBFLUSH */
 #ifdef CONFIG_SWAP
 		SWAP_RA,

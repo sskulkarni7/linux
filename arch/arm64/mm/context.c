@@ -11,7 +11,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
-
+#include <linux/vmstat.h>
 #include <asm/cpufeature.h>
 #include <asm/mmu_context.h>
 #include <asm/smp.h>
@@ -444,4 +444,10 @@ static int asids_init(void)
 		set_kpti_asid_bits(asid_map);
 	return 0;
 }
+
+void _count_vm_tlb_event(enum vm_event_item x)
+{
+	count_vm_tlb_event(x);
+}
+
 early_initcall(asids_init);
