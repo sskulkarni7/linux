@@ -1433,7 +1433,11 @@ const char * const vmstat_text[] = {
 	[I(NR_TLB_REMOTE_FLUSH)]		= "nr_tlb_remote_flush",
 	[I(NR_TLB_REMOTE_FLUSH_RECEIVED)]	= "nr_tlb_remote_flush_received",
 	[I(NR_TLB_LOCAL_FLUSH_ALL)]		= "nr_tlb_local_flush_all",
-	[I(NR_TLB_LOCAL_FLUSH_ONE)]		= "nr_tlb_local_flush_one",
+	[I(NR_TLB_LOCAL_FLUSH_ONE)]             = "nr_tlb_local_flush_one",
+	[I(NR_TLB_LOCAL_FLUSH_RANGE)]           = "nr_tlb_local_flush_range",
+	[I(NR_TLB_FLUSH_ALL)]                   = "nr_tlb_flush_all",
+	[I(NR_TLB_FLUSH_RANGE)]                 = "nr_tlb_flush_range",
+	[I(NR_TLB_ARM64_BROADCAST_MULTIPLE)]    = "nr_tlb_arm64_broadcast_multiple",
 #endif /* CONFIG_DEBUG_TLBFLUSH */
 
 #ifdef CONFIG_SWAP

@@ -20,4 +20,13 @@ config ARM64_RELOC_TEST
 	depends on m
 	tristate "Relocation testing module"
 
+config DEBUG_TLBFLUSH
+	bool "Add vmstat counters to analyze TLB handling"
+	depends on DEBUG_KERNEL
+	help
+	 This option adds vmstat counters that track how arm64 TLB invalidations
+	 are handled, specifically how many take the local fast path versus a
+	 broadcast. The counts are exposed in /proc/vmstat and are useful for
+	 analyzing the active_cpu optimization. If unsure, say N.
+
 source "drivers/hwtracing/coresight/Kconfig"

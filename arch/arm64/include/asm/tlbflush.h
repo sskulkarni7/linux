@@ -16,7 +16,13 @@
 #include <linux/mmu_notifier.h>
 #include <asm/cputype.h>
 #include <asm/mmu.h>
-
+#include <linux/vm_event_item.h>
+#ifdef CONFIG_DEBUG_TLBFLUSH
+extern void _count_vm_tlb_event(enum vm_event_item);
+#define count_tlb_event(x) _count_vm_tlb_event(x)
+#else
+#define count_tlb_event(x) do { } while (0)
+#endif
 /*
  * Raw TLBI operations.
  *
@@ -370,8 +376,12 @@ static inline bool flush_tlb_user_pre(struct mm_struct *mm, tlbf_t flags)
 	}
 
 	local = active == self;
-	if (!local)
+	if (!local) {
+		if (active == ACTIVE_CPU_MULTIPLE)
+			/* broadcast because mm is active on multiple CPUs */
+			count_tlb_event(NR_TLB_ARM64_BROADCAST_MULTIPLE);
 		migrate_enable();
+	}
 
 	return local;
 }
@@ -490,10 +500,12 @@ static inline void flush_tlb_mm(struct mm_struct *mm)
 		__tlbi(aside1, asid);
 		__tlbi_user(aside1, asid);
 		dsb(nsh);
+		count_tlb_event(NR_TLB_LOCAL_FLUSH_ALL);
 	} else {
 		__tlbi(aside1is, asid);
 		__tlbi_user(aside1is, asid);
 		__tlbi_sync_s1ish(mm);
+		count_tlb_event(NR_TLB_FLUSH_ALL);
 	}
 	flush_tlb_user_post(local);
 	mmu_notifier_arch_invalidate_secondary_tlbs(mm, 0, -1UL);
@@ -711,6 +723,11 @@ static __always_inline void __do_flush_tlb_range(struct vm_area_struct *vma,
 		else
 			dsb(nsh);
 	}
+
+	if (local)
+		count_tlb_event(NR_TLB_LOCAL_FLUSH_RANGE);
+	else
+		count_tlb_event(NR_TLB_FLUSH_RANGE);
 
 	flush_tlb_user_post(local);
 }
