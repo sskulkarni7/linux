@@ -1422,6 +1422,7 @@ void sme_do_dvmsync(const struct cpumask *mask)
 	smp_call_function_many(mask, sme_dvmsync_ipi, NULL, true);
 	preempt_enable();
 }
+EXPORT_SYMBOL_GPL(sme_do_dvmsync);
 
 void sme_enable_dvmsync(void)
 {

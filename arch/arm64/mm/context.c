@@ -452,5 +452,6 @@ void _count_vm_tlb_event(enum vm_event_item x)
 {
 	count_vm_tlb_event(x);
 }
+EXPORT_SYMBOL_GPL(_count_vm_tlb_event);
 
 early_initcall(asids_init);

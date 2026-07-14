@@ -1,0 +1,29 @@
+menuconfig BENCHMARKS
+	bool "In kernel benchmarks"
+	def_bool n
+	help
+	  Includes in kernel benchmark modules in the build. These modules can
+	  be loaded later to trigger benchmarking kernel subsystems.
+	  Output will be generated in the system log.
+
+if BENCHMARKS
+
+config BENCHMARK_TLBFLUSH
+	tristate "TLB flush local vs broadcast benchmark"
+	depends on m && ARM64 && PERF_EVENTS
+	default m
+	help
+	  Measures the cycle cost of flush_tlb_mm()/flush_tlb_page() when
+	  the active_cpu optimization takes the local-only fast path versus
+	  when it must broadcast to all CPUs.
+
+config BENCHMARK_TLBFLUSH_WARM
+	tristate "TLB flush broadcast benchmark with warmed remote TLBs"
+	depends on m && ARM64 && PERF_EVENTS
+	default m
+	help
+	  Like BENCHMARK_TLBFLUSH, but keeps every remote CPU's TLB warm
+	  during the broadcast phase (one kthread per remote CPU) to test
+	  whether remote entry presence affects broadcast latency.
+
+endif # BENCHMARKS

@@ -634,6 +634,7 @@ void __mmu_notifier_arch_invalidate_secondary_tlbs(struct mm_struct *mm,
 	}
 	srcu_read_unlock(&srcu, id);
 }
+EXPORT_SYMBOL_GPL(__mmu_notifier_arch_invalidate_secondary_tlbs);
 
 /*
  * Same as mmu_notifier_register but here the caller must hold the mmap_lock in
